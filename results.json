@@ -1,0 +1,26 @@
+{
+  "10": {
+    "psnr_noisy": 28.24,
+    "psnr_ours": 33.31,
+    "psnr_paper": 35.9,
+    "gap": -2.59
+  },
+  "20": {
+    "psnr_noisy": 22.41,
+    "psnr_ours": 29.77,
+    "psnr_paper": 31.36,
+    "gap": -1.59
+  },
+  "25": {
+    "psnr_noisy": 20.59,
+    "psnr_ours": 28.75,
+    "psnr_paper": 30.02,
+    "gap": -1.27
+  },
+  "30": {
+    "psnr_noisy": 19.14,
+    "psnr_ours": 27.87,
+    "psnr_paper": 29.03,
+    "gap": -1.16
+  }
+}
