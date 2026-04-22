@@ -177,11 +177,16 @@ outperforms MOD and remains useful under noise---is reproduced.
 Fig.~\ref{fig:vsN} extends the evaluation to vary the number of
 training signals $N\in\{100,300,500,1000,1500,2000,3000\}$ in the
 noiseless setting.
-Recovery rises steeply below $N\approx500$ and levels off near
-45--46 atoms above $N=1500$, matching the trend of paper Figure~6.
-K-SVD consistently matches or exceeds MOD at every training-set
-size, confirming that the SVD atom update is more sample-efficient
-than the global pseudoinverse step.
+Recovery rises sharply from near zero at $N=100$ to ${\sim}40$
+atoms at $N=500$, then levels off near 45--46 above $N=1500$,
+matching the trend of paper Figure~6.
+A notable crossover occurs around $N=500$: MOD leads K-SVD at
+$N=300$ (26.5 vs.\ 18.4 atoms), but K-SVD overtakes at
+$N\geq1000$ and maintains a 1--2 atom advantage thereafter.
+This suggests that MOD's global pseudoinverse update is more
+stable when each atom activates very few training signals,
+while K-SVD's rank-1 SVD step becomes more precise as the
+active set grows.
 
 \begin{figure}[h]
     \centering
