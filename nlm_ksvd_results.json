@@ -2,28 +2,28 @@
   "CameraMan": {
     "10": {
       "noisy": 28.24,
-      "NLM+K-SVD": 33.1,
+      "NLM+K-SVD": 33.32,
       "K-SVD": 33.31,
       "NLM": 32.86,
       "BM3D": 34.23
     },
     "20": {
       "noisy": 22.41,
-      "NLM+K-SVD": 28.97,
+      "NLM+K-SVD": 29.75,
       "K-SVD": 29.77,
       "NLM": 29.53,
       "BM3D": 30.58
     },
     "25": {
       "noisy": 20.59,
-      "NLM+K-SVD": 28.22,
+      "NLM+K-SVD": 28.7,
       "K-SVD": 28.75,
       "NLM": 28.71,
       "BM3D": 29.68
     },
     "30": {
       "noisy": 19.14,
-      "NLM+K-SVD": 27.55,
+      "NLM+K-SVD": 27.75,
       "K-SVD": 27.87,
       "NLM": 28.04,
       "BM3D": 28.99
@@ -32,28 +32,28 @@
   "Astronaut": {
     "10": {
       "noisy": 28.53,
-      "NLM+K-SVD": 34.5,
+      "NLM+K-SVD": 34.66,
       "K-SVD": 34.64,
       "NLM": 33.4,
       "BM3D": 35.61
     },
     "20": {
       "noisy": 22.61,
-      "NLM+K-SVD": 29.77,
+      "NLM+K-SVD": 30.42,
       "K-SVD": 30.4,
       "NLM": 29.64,
       "BM3D": 31.5
     },
     "25": {
       "noisy": 20.75,
-      "NLM+K-SVD": 28.17,
+      "NLM+K-SVD": 28.99,
       "K-SVD": 28.95,
       "NLM": 28.34,
       "BM3D": 30.1
     },
     "30": {
       "noisy": 19.25,
-      "NLM+K-SVD": 26.8,
+      "NLM+K-SVD": 27.78,
       "K-SVD": 27.72,
       "NLM": 27.22,
       "BM3D": 28.91
