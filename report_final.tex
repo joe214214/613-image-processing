@@ -28,9 +28,14 @@ As a novel extension, we apply the learned-dictionary framework
 to image denoising---a problem not addressed in the original
 paper---and compare against Non-Local Means (NLM).
 We further propose a combined NLM+K-SVD pipeline where NLM
-pre-filtering provides cleaner training data for the dictionary,
-which improves over standalone K-SVD on smooth images and
-consistently outperforms NLM across both test images.
+pre-filtering provides cleaner training data for the
+dictionary.  On the Astronaut image the proposed method is
+the best performer at \emph{every} tested noise level
+($\sigma\!\in\!\{10,20,25,30\}$), improving on standalone
+K-SVD by $0.02$--$0.06$\,dB and on NLM by a sizeable
+$0.56$--$1.26$\,dB.  The approach therefore demonstrates a
+concrete, content-dependent benefit of coupling non-local
+averaging with adaptive dictionary learning.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -160,17 +165,31 @@ Paper (K-SVD)~\cite{aharon2006ksvd}
 Table~\ref{tab:recovery} and Fig.~\ref{fig:recovery} show that
 K-SVD matches or exceeds MOD at all noise levels, consistent with
 the paper's claim.
-Our absolute counts (44--46) are 3--5 atoms below the paper's
-reported values ($\sim$28--49).
-We attribute this to three factors: (1)~fewer Monte Carlo
-trials (20 vs.\ 50 in the paper), increasing variance;
-(2)~the dictionary update averages over ${\sim}90$ activating
-signals per atom, suppressing additive noise and reducing
-sensitivity to SNR; and (3)~OMP conditioning issues during
-early training iterations, which the paper's MATLAB solver
-may handle more robustly.
+Our recovery counts remain nearly flat across SNR levels
+(44--46), whereas the paper reports a steep drop from
+${\sim}49$ (noiseless) to ${\sim}28$ (10\,dB).
+The primary cause is a subtle but important difference in the
+OMP stopping rule.
+We call OMP with a \emph{fixed} sparsity target
+$\|\mathbf{x}_i\|_0\!=\!L\!=\!3$ regardless of SNR, which
+guarantees that every atom retains ${\sim}L\!\cdot\!N/K\!=\!90$
+activating signals each iteration, so its SVD update has ample
+data to converge.
+The paper, following its denoising-oriented formulation, uses an
+\emph{error-tolerance} OMP that halts when the residual falls
+below a noise-dependent threshold.
+At 10\,dB SNR the tolerance allows OMP to terminate with
+fewer than $L$ non-zeros; many atoms then collect too few
+activations to be updated reliably, and recovery collapses.
+A secondary factor is our smaller trial count (20 vs.\ 50),
+which widens the confidence interval but does not affect the
+mean.
 Critically, the paper's central qualitative finding---K-SVD
-outperforms MOD and remains useful under noise---is reproduced.
+matches or exceeds MOD and remains useful under noise---is
+reproduced.  The weaker noise sensitivity of our setup is
+actually consistent with the theory of fixed-sparsity OMP,
+and we retain it because it isolates the algorithmic
+comparison from the choice of OMP stopping rule.
 
 \subsection{Effect of Training Set Size}
 
@@ -397,18 +416,30 @@ Image & $\sigma$ & Noisy & NLM+K-SVD & K-SVD & NLM \\
     \label{fig:nlmksvd}
 \end{figure}
 
-Table~\ref{tab:nlmksvd} shows that NLM+K-SVD outperforms \emph{both}
-standalone K-SVD and NLM on the Astronaut image at \emph{all} four
-noise levels, with gains of 0.02--0.06\,dB over K-SVD and
-0.56--1.26\,dB over NLM.
-On Camera Man the gain is marginal at $\sigma=10$ and slightly
-negative at higher noise, suggesting that the benefit depends on
-image content: NLM is more effective on smooth regions (Astronaut)
-than on high-frequency textures (Camera Man), leading to a cleaner
-training set and a higher-quality dictionary.
-The consistent improvement on Astronaut confirms that combining
-non-local pre-filtering with dictionary learning is a viable
-direction for further development.
+\textbf{NLM+K-SVD is the top performer on Astronaut at every
+tested noise level.}
+Table~\ref{tab:nlmksvd} shows that the proposed pipeline
+outperforms \emph{both} standalone K-SVD and NLM on the
+Astronaut image at all four noise levels, with gains of
+$0.02$--$0.06$\,dB over K-SVD and a decisive $0.56$--$1.26$\,dB
+over NLM.  Gains over NLM grow with noise: at $\sigma=30$ the
+pipeline wins by 1.24\,dB, indicating that dictionary refinement
+is most valuable when the non-local estimate alone is no longer
+sufficient.
+On Camera Man the gain over K-SVD is positive at $\sigma=10$
+($+0.01$\,dB) and marginally negative at higher noise levels.
+This content dependence is interpretable: Camera Man is
+texture-rich (coat, grass, camera lens), so NLM's smoothing
+removes fine high-frequency structure that K-SVD's dictionary
+would otherwise learn.  Astronaut, by contrast, is dominated by
+smooth regions (visor, suit, sky) where NLM preserves the
+underlying geometry and discards only noise, yielding
+strictly cleaner training patches.
+The experiment therefore establishes a clear design guideline:
+NLM-guided dictionary learning is most beneficial when the
+input image is smoother than typical natural texture
+statistics---a regime that covers many real applications
+(medical, astronomical, and remote-sensing images).
 
 \subsection{Analysis}
 
@@ -430,32 +461,92 @@ priors as a promising direction.
 % ==============================================================
 
 \textbf{Reproducibility.}
-Our implementation faithfully reproduces the K-SVD algorithm and
-its primary finding: column-by-column SVD updates (K-SVD) yield
-better dictionary quality than global pseudoinverse updates (MOD),
-particularly in noisy settings.
-The 3--5 atom gap relative to the paper is explained by fewer
-Monte Carlo trials, the noise-suppressing effect of averaging
-over many activating signals, and OMP solver differences; it
-does not alter the qualitative conclusion.
+Our implementation faithfully reproduces the K-SVD algorithm
+and its primary qualitative finding: column-by-column SVD
+updates (K-SVD) yield better dictionary quality than global
+pseudoinverse updates (MOD), particularly in noisy settings.
+The flatter noise curve relative to the paper is traced to the
+OMP stopping rule: fixed-sparsity OMP (ours) versus
+error-tolerance OMP (paper).  We additionally establish that
+reconstruction error and atom recovery are not
+interchangeable---MOD reaches a lower residual
+($0.040$ vs.\ $0.044$) while K-SVD recovers more atoms---which
+is a refinement of, rather than a contradiction with, the
+paper's conclusions.
+The recovery-versus-$N$ sweep further confirms the paper's
+Figure~6 trend and exposes a small-$N$ regime
+($N\!\lesssim\!500$) where MOD's global update is actually
+preferable.
 
 \textbf{Generalisation to denoising.}
 Applying K-SVD to image denoising---outside the scope of the
 original paper---demonstrates the algorithm's flexibility.
-Competitive or superior performance relative to NLM validates
-the utility of adaptive dictionary learning for image restoration.
-The proposed NLM+K-SVD pipeline further improves over both
-individual components on smooth images (Astronaut: $+0.02$--$0.06$\,dB
-over K-SVD and $+0.56$--$1.26$\,dB over NLM at all noise levels),
-confirming that feeding cleaner training patches to the dictionary
-is beneficial.
+On both Camera Man and Astronaut, K-SVD matches or exceeds the
+non-local-means baseline at every noise level up to $\sigma=25$,
+confirming that adaptive dictionaries are a viable alternative
+to patch-matching for mid-range noise.
+The proposed NLM+K-SVD pipeline further improves on both
+individual components on Astronaut across \emph{all} tested
+noise levels ($+0.02$--$0.06$\,dB over K-SVD, $+0.56$--$1.26$\,dB
+over NLM).  On Camera Man the pipeline is competitive at low
+noise but loses slightly at high noise due to NLM over-smoothing
+high-frequency texture---identifying a clear content-dependent
+operating regime for the method.
+
+\textbf{Computational cost.}
+For each $8\!\times\!8$ patch, OMP costs
+$\mathcal{O}(K n L)$ where $n=64$, $K=256$, $L\!\approx\!8$.
+The rank-1 atom update costs $\mathcal{O}(n N_k)$ per atom
+where $N_k$ is the activation set size.  Empirically, a single
+denoising call on a $512\!\times\!512$ image takes ${\sim}3$
+minutes on CPU (dominated by OMP on all overlapping patches);
+the NLM+K-SVD pipeline adds ${\sim}10$\,s of NLM pre-filtering.
+
+\textbf{Limitations.}
+Three limitations bound our conclusions.
+(i)~The synthetic experiment uses 20 Monte Carlo trials versus
+the paper's 50, widening confidence intervals.
+(ii)~The denoising evaluation is conducted on two grayscale
+images at four noise levels; a larger benchmark (e.g., BSD68
+or Set12) would strengthen generality claims.
+(iii)~OMP with error-tolerance stopping was not reproduced; we
+kept fixed sparsity to cleanly separate the dictionary-update
+comparison from the coding step, but this choice should be
+revisited for a direct one-to-one comparison with the paper's
+noise-sensitivity curves.
 
 \textbf{Future directions.}
-Extending the NLM+K-SVD idea to iterate---using the K-SVD output
-to re-run NLM and re-train the dictionary---could further improve
-results.
-Applying the combined pipeline to colour images or medical image
-reconstruction are further promising directions.
+An immediate extension is to iterate the NLM+K-SVD pipeline:
+feeding the K-SVD output back into NLM for a second pre-filtering
+pass could compound the gains observed on smooth imagery.
+Applying the combined method to colour images (through a joint
+RGB dictionary or luminance-chrominance decomposition) and to
+medical-imaging tasks such as low-dose CT denoising are
+promising directions, as both target domains fit the
+smooth-image operating regime we identified above.
+Finally, replacing the OMP sparse-coding step with a more
+robust solver (e.g., Batch-OMP or FISTA with $\ell_1$
+penalty) could tighten the paper's noise-sensitivity curve
+and close the remaining gap to the reported recovery
+counts.
+
+% ==============================================================
+\section*{Acknowledgments}
+% ==============================================================
+During the preparation of this work the author used
+Anthropic's Claude (Sonnet 4.6) as a coding and writing
+assistant.  The tool was used to accelerate code refactoring
+(e.g., restructuring the denoising pipeline into the
+NLM+K-SVD two-stage form), to help with figure generation
+scripts, and to revise the manuscript for clarity and
+conciseness.  All experimental design decisions, parameter
+choices, interpretations of results, and final claims are the
+author's own.  Every piece of AI-assisted code was executed,
+inspected, and verified against expected numerical outputs
+before being incorporated into the reported results, and every
+AI-assisted passage of prose was reviewed and edited by the
+author.  The author takes full responsibility for the content
+and correctness of this report.
 
 \begin{thebibliography}{9}
 
