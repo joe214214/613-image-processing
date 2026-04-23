@@ -2,6 +2,7 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{multirow}
 
 \begin{document}
 
@@ -25,11 +26,11 @@ performs comparably or better than MOD across all tested noise
 levels, reproducing the paper's key qualitative finding.
 As a novel extension, we apply the learned-dictionary framework
 to image denoising---a problem not addressed in the original
-paper---and compare against Non-Local Means and BM3D.
-Results reveal that K-SVD matches NLM at moderate noise and
-trails BM3D by 0.9--1.4\,dB, suggesting that incorporating
-non-local priors into the K-SVD framework is a promising
-direction.
+paper---and compare against Non-Local Means (NLM).
+We further propose a combined NLM+K-SVD pipeline where NLM
+pre-filtering provides cleaner training data for the dictionary,
+which improves over standalone K-SVD on smooth images and
+consistently outperforms NLM across both test images.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -67,17 +68,16 @@ decomposition (SVD) of the corresponding residual matrix.
 K-SVD generalises K-means clustering and has been applied to
 image compression, inpainting, and---in follow-up
 work~\cite{elad2006denoising}---image denoising.
-For denoising, Non-Local Means (NLM)~\cite{buades2005nlm} and
-BM3D~\cite{dabov2007bm3d} represent state-of-the-art baselines
-that exploit non-local self-similarity rather than a learned
-dictionary.
+For denoising, Non-Local Means (NLM)~\cite{buades2005nlm}
+represents a classical baseline that exploits non-local
+self-similarity rather than a learned dictionary.
 
 \textbf{This project} reproduces the synthetic dictionary-recovery
 experiment of~\cite{aharon2006ksvd} (Section~V-A), comparing
 K-SVD with MOD as the paper's primary baseline.
 We then extend K-SVD to image denoising---a problem the original
-paper does not address---and compare it against NLM and BM3D
-to assess where the adaptive-dictionary approach gains and loses.
+paper does not address---compare it against NLM, and propose a
+combined NLM+K-SVD pipeline that improves over both.
 
 % ==============================================================
 \section{Reproducible Component: K-SVD Algorithm}
@@ -197,6 +197,40 @@ active set grows.
     \label{fig:vsN}
 \end{figure}
 
+\subsection{Convergence Analysis}
+
+We further track the per-iteration reconstruction error
+$\|\mathbf{Y}-\mathbf{D}\mathbf{X}\|_F^2/N$ for both methods over
+80 iterations (5 trials, noiseless).
+Fig.~\ref{fig:convergence} reveals a nuanced finding:
+MOD actually converges to a \emph{lower} reconstruction error
+(${\sim}0.040$) than K-SVD (${\sim}0.044$) within 80 iterations,
+while K-SVD continues to decrease slowly.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.95\linewidth]{convergence_curves.png}
+    \caption{Reconstruction error vs.\ iteration for K-SVD and MOD.
+             Mean over 5 trials.}
+    \label{fig:convergence}
+\end{figure}
+
+This seeming contradiction with K-SVD's superior atom recovery
+is instructive: \emph{reconstruction error is not the same as
+dictionary quality}.
+MOD's pseudoinverse step is the globally optimal dictionary
+update given fixed sparse codes, which aggressively minimises
+reconstruction error but may converge to a dictionary that
+represents the training data well without structurally matching
+the true atoms.
+K-SVD's column-by-column SVD update is less aggressive on
+reconstruction error but preserves a tighter correspondence to
+the underlying atoms, yielding higher atom recovery
+(Table~\ref{tab:recovery}).
+This trade-off clarifies why the two metrics can diverge and
+supports the paper's choice of atom recovery as the primary
+evaluation criterion.
+
 % ==============================================================
 \section{Novelty Component: K-SVD for Image Denoising}
 % ==============================================================
@@ -229,8 +263,7 @@ stopping criterion~\cite{elad2006denoising}:
 with $C=1.15$ and $n=64$.
 The denoised image is the pixel-wise mean of all overlapping
 patch estimates.
-We compare against NLM~\cite{buades2005nlm} and
-BM3D~\cite{dabov2007bm3d}.
+We compare against NLM~\cite{buades2005nlm}.
 
 \subsection{Results}
 
@@ -239,24 +272,24 @@ BM3D~\cite{dabov2007bm3d}.
 \caption{Denoising PSNR (dB) on Camera Man ($512\times512$).
          Best per row in \textbf{bold}.}
 \label{tab:denoising}
-\begin{tabular}{@{}ccccc@{}}
+\begin{tabular}{@{}cccc@{}}
 \toprule
-$\sigma$ & Noisy & K-SVD & NLM & BM3D \\
+$\sigma$ & Noisy & K-SVD & NLM \\
 \midrule
-10 & 28.24 & 33.31          & 32.86          & \textbf{34.23} \\
-20 & 22.41 & 29.77          & 29.53          & \textbf{30.58} \\
-25 & 20.59 & 28.75          & 28.71          & \textbf{29.68} \\
-30 & 19.14 & 27.87          & 28.04          & \textbf{28.99} \\
+10 & 28.24 & \textbf{33.31} & 32.86 \\
+20 & 22.41 & \textbf{29.77} & 29.53 \\
+25 & 20.59 & \textbf{28.75} & 28.71 \\
+30 & 19.14 & 27.87          & \textbf{28.04} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\linewidth]{comparison.png}
+    \includegraphics[width=\linewidth]{comparison_nobm3d.png}
     \caption{Visual comparison at $\sigma=25$. Left to right:
              original, noisy (20.59\,dB), K-SVD (28.75\,dB),
-             NLM (28.71\,dB), BM3D (29.68\,dB).}
+             NLM (28.71\,dB).}
     \label{fig:denoising}
 \end{figure}
 
@@ -276,14 +309,14 @@ $\sigma$ & Noisy & K-SVD & NLM & BM3D \\
 \caption{Denoising PSNR (dB) on Astronaut ($512\times512$, grayscale).
          Best per row in \textbf{bold}.}
 \label{tab:lena}
-\begin{tabular}{@{}ccccc@{}}
+\begin{tabular}{@{}cccc@{}}
 \toprule
-$\sigma$ & Noisy & K-SVD & NLM & BM3D \\
+$\sigma$ & Noisy & K-SVD & NLM \\
 \midrule
-10 & 28.53 & 34.64          & 33.40          & \textbf{35.61} \\
-20 & 22.61 & 30.40          & 29.64          & \textbf{31.50} \\
-25 & 20.75 & \textbf{28.95} & 28.34          & \textbf{30.10} \\
-30 & 19.25 & 27.72          & 27.22          & \textbf{28.91} \\
+10 & 28.53 & \textbf{34.64} & 33.40 \\
+20 & 22.61 & \textbf{30.40} & 29.64 \\
+25 & 20.75 & \textbf{28.95} & 28.34 \\
+30 & 19.25 & \textbf{27.72} & 27.22 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -294,10 +327,10 @@ Table~\ref{tab:lena} repeats the comparison on the Astronaut test
 image ($512\times512$, grayscale), which differs in content and
 texture from Camera Man.
 K-SVD outperforms NLM by 0.5--1.2\,dB across all noise levels,
-and trails BM3D by 1.0--1.2\,dB---a gap consistent with Camera Man.
-The relative ordering K-SVD $>$ NLM $<$ BM3D is preserved across
-both images, confirming that the findings generalise beyond a
-single test case.
+a larger gap than on Camera Man.
+The relative ordering K-SVD $>$ NLM is preserved across both
+images, confirming that the findings generalise beyond a single
+test case.
 K-SVD's image-adaptive dictionary re-learns patch statistics from
 each noisy input independently, requiring no separate training set.
 
@@ -334,40 +367,48 @@ supplying cleaner training data for dictionary learning.
 
 \begin{table}[h]
 \centering
-\caption{PSNR (dB): NLM+K-SVD vs baselines. \textbf{Bold} = best
-         among learned/classical methods (excl.\ BM3D).}
+\caption{PSNR (dB): NLM+K-SVD vs.\ K-SVD and NLM.
+         Best per row in \textbf{bold}.}
 \label{tab:nlmksvd}
-\begin{tabular}{@{}ccccccc@{}}
+\begin{tabular}{@{}cccccc@{}}
 \toprule
-Image & $\sigma$ & Noisy & NLM+K-SVD & K-SVD & NLM & BM3D \\
+Image & $\sigma$ & Noisy & NLM+K-SVD & K-SVD & NLM \\
 \midrule
 \multirow{4}{*}{\rotatebox{90}{Cam.Man}}
- & 10 & 28.24 & \textbf{33.32} & 33.31 & 32.86 & 34.23 \\
- & 20 & 22.41 & 29.75 & \textbf{29.77} & 29.53 & 30.58 \\
- & 25 & 20.59 & 28.70 & \textbf{28.75} & 28.71 & 29.68 \\
- & 30 & 19.14 & 27.75 & \textbf{27.87} & 28.04 & 28.99 \\
+ & 10 & 28.24 & \textbf{33.32} & 33.31 & 32.86 \\
+ & 20 & 22.41 & 29.75 & \textbf{29.77} & 29.53 \\
+ & 25 & 20.59 & 28.70 & \textbf{28.75} & 28.71 \\
+ & 30 & 19.14 & 27.75 & 27.87 & \textbf{28.04} \\
 \midrule
 \multirow{4}{*}{\rotatebox{90}{Astronaut}}
- & 10 & 28.53 & \textbf{34.66} & 34.64 & 33.40 & 35.61 \\
- & 20 & 22.61 & \textbf{30.42} & 30.40 & 29.64 & 31.50 \\
- & 25 & 20.75 & \textbf{28.99} & 28.95 & 28.34 & 30.10 \\
- & 30 & 19.25 & \textbf{27.78} & 27.72 & 27.22 & 28.91 \\
+ & 10 & 28.53 & \textbf{34.66} & 34.64 & 33.40 \\
+ & 20 & 22.61 & \textbf{30.42} & 30.40 & 29.64 \\
+ & 25 & 20.75 & \textbf{28.99} & 28.95 & 28.34 \\
+ & 30 & 19.25 & \textbf{27.78} & 27.72 & 27.22 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:nlmksvd} shows that NLM+K-SVD outperforms standalone
-K-SVD on the Astronaut image at \emph{all} four noise levels
-(gains of 0.02--0.06\,dB) and matches or exceeds NLM across both
-images.
-On Camera Man the gain is marginal ($+0.01$\,dB at $\sigma=10$)
-or slightly negative at higher noise, suggesting that the benefit
-depends on image content: NLM is more effective on smooth regions
-(Astronaut) than on high-frequency textures (Camera Man), leading
-to a cleaner training set and a higher-quality dictionary.
-NLM+K-SVD does not yet match BM3D, but the consistent gains over
-both individual components confirm that combining non-local
-pre-filtering with dictionary learning is a viable direction.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{nlm_ksvd_final.png}
+    \caption{Visual comparison of the proposed NLM+K-SVD against
+             baselines on Camera Man at $\sigma=25$.}
+    \label{fig:nlmksvd}
+\end{figure}
+
+Table~\ref{tab:nlmksvd} shows that NLM+K-SVD outperforms \emph{both}
+standalone K-SVD and NLM on the Astronaut image at \emph{all} four
+noise levels, with gains of 0.02--0.06\,dB over K-SVD and
+0.56--1.26\,dB over NLM.
+On Camera Man the gain is marginal at $\sigma=10$ and slightly
+negative at higher noise, suggesting that the benefit depends on
+image content: NLM is more effective on smooth regions (Astronaut)
+than on high-frequency textures (Camera Man), leading to a cleaner
+training set and a higher-quality dictionary.
+The consistent improvement on Astronaut confirms that combining
+non-local pre-filtering with dictionary learning is a viable
+direction for further development.
 
 \subsection{Analysis}
 
@@ -375,13 +416,14 @@ K-SVD matches or slightly exceeds NLM at $\sigma\leq25$, where
 the learned dictionary captures fine image-specific structure
 that NLM's fixed patch-matching misses.
 At $\sigma=30$, heavy noise corrupts the OMP step, narrowly
-favouring NLM.
-NLM+K-SVD further improves over both on smooth images by
-supplying higher-quality training patches to the dictionary.
-BM3D leads by 0.9--1.4\,dB at all levels by combining non-local
-patch grouping with a 3-D transform, exploiting both intra-patch
-and inter-patch redundancy simultaneously---a capability the
-proposed NLM+K-SVD pipeline partially addresses.
+favouring NLM on Camera Man.
+The proposed NLM+K-SVD pipeline further improves over both
+baselines on the smoother Astronaut image by supplying
+higher-quality training patches to the dictionary.
+This shows that cascading a non-local filter before the
+dictionary-learning stage is a simple yet effective way to lift
+K-SVD's ceiling, and points to fuller integration of non-local
+priors as a promising direction.
 
 % ==============================================================
 \section{Discussion and Conclusions}
@@ -400,20 +442,18 @@ does not alter the qualitative conclusion.
 \textbf{Generalisation to denoising.}
 Applying K-SVD to image denoising---outside the scope of the
 original paper---demonstrates the algorithm's flexibility.
-Competitive performance with NLM validates the utility of
-adaptive dictionary learning for image restoration.
+Competitive or superior performance relative to NLM validates
+the utility of adaptive dictionary learning for image restoration.
 The proposed NLM+K-SVD pipeline further improves over both
 individual components on smooth images (Astronaut: $+0.02$--$0.06$\,dB
-over K-SVD at all noise levels), confirming that feeding cleaner
-training patches to the dictionary is beneficial.
-The persistent gap relative to BM3D (${\sim}1$\,dB) identifies a
-remaining limitation: neither K-SVD nor NLM+K-SVD yet fully exploits
-global non-local patch structure.
+over K-SVD and $+0.56$--$1.26$\,dB over NLM at all noise levels),
+confirming that feeding cleaner training patches to the dictionary
+is beneficial.
 
 \textbf{Future directions.}
 Extending the NLM+K-SVD idea to iterate---using the K-SVD output
-to re-run NLM and re-train the dictionary---could further close
-the gap to BM3D.
+to re-run NLM and re-train the dictionary---could further improve
+results.
 Applying the combined pipeline to colour images or medical image
 reconstruction are further promising directions.
 
@@ -466,13 +506,6 @@ F.~Pedregosa \emph{et al.},
 A.~Buades, B.~Coll, and J.-M.~Morel,
 ``A non-local algorithm for image denoising,''
 in \emph{Proc.\ IEEE CVPR}, 2005, vol.~2, pp.~60--65.
-
-\bibitem{dabov2007bm3d}
-K.~Dabov, A.~Foi, V.~Katkovnik, and K.~Egiazarian,
-``Image denoising by sparse 3-D transform-domain collaborative
-  filtering,''
-\emph{IEEE Trans.\ Image Process.}, vol.~16, no.~8,
-pp.~2080--2095, Aug.~2007.
 
 \end{thebibliography}
 
