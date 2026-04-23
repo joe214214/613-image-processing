@@ -59,27 +59,29 @@ def bm3d_denoise(noisy, sigma):
     return np.clip(bm3d.bm3d(noisy, sigma_psd=sigma), 0, 1)
 
 def nlm_ksvd_denoise(noisy, sigma):
-    # Step 1: NLM pre-denoise
+    # Step 1: NLM pre-denoise — used only for dictionary training
     nlm_out = denoise_nl_means(noisy, h=0.8*sigma, patch_size=7,
                                patch_distance=11, fast_mode=True)
-    # Estimate residual noise from NLM stage
-    sigma_eff = float(np.std(noisy - nlm_out))
-    sigma_eff = max(sigma_eff, sigma * 0.1)   # floor to avoid zero tol
 
-    # Step 2: K-SVD refinement on NLM output
-    patches = extract_patches_2d(nlm_out, (PATCH_SIZE, PATCH_SIZE))
-    n       = patches.shape[0]
-    p2d     = patches.reshape(n, -1).astype(np.float64)
-    means   = p2d.mean(axis=1, keepdims=True); p2d -= means
+    # Step 2: Train K-SVD dictionary on the cleaner NLM patches
+    patches_nlm = extract_patches_2d(nlm_out, (PATCH_SIZE, PATCH_SIZE))
+    n           = patches_nlm.shape[0]
+    p2d_nlm     = patches_nlm.reshape(n, -1).astype(np.float64)
+    means_nlm   = p2d_nlm.mean(axis=1, keepdims=True); p2d_nlm -= means_nlm
     idx = np.random.default_rng(42).choice(n, size=min(N_TRAIN, n), replace=False)
     dico = MiniBatchDictionaryLearning(n_components=N_ATOMS, alpha=0.5, max_iter=MAX_ITER,
                batch_size=256, random_state=42, fit_algorithm='lars',
                max_no_improvement=None, verbose=0)
-    dico.fit(p2d[idx]); D = dico.components_
-    omp_tol  = C * sigma_eff**2 * PATCH_SIZE**2
-    codes    = orthogonal_mp_gram(D @ D.T, D @ p2d.T, tol=omp_tol,
-                                  norms_squared=np.sum(p2d**2, axis=1))
-    rec = (D.T @ codes).T + means
+    dico.fit(p2d_nlm[idx]); D = dico.components_
+
+    # Step 3: OMP encode the ORIGINAL noisy patches with the better dictionary
+    patches_noisy = extract_patches_2d(noisy, (PATCH_SIZE, PATCH_SIZE))
+    p2d_noisy     = patches_noisy.reshape(n, -1).astype(np.float64)
+    means_noisy   = p2d_noisy.mean(axis=1, keepdims=True); p2d_noisy -= means_noisy
+    omp_tol  = C * sigma**2 * PATCH_SIZE**2
+    codes    = orthogonal_mp_gram(D @ D.T, D @ p2d_noisy.T, tol=omp_tol,
+                                  norms_squared=np.sum(p2d_noisy**2, axis=1))
+    rec = (D.T @ codes).T + means_noisy
     return np.clip(reconstruct_from_patches_2d(rec.reshape(-1, PATCH_SIZE, PATCH_SIZE),
                                                noisy.shape), 0, 1)
 
