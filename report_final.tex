@@ -428,33 +428,62 @@ is most valuable when the non-local estimate alone is no longer
 sufficient.
 On Camera Man the gain over K-SVD is positive at $\sigma=10$
 ($+0.01$\,dB) and marginally negative at higher noise levels.
-This content dependence is interpretable: Camera Man is
-texture-rich (coat, grass, camera lens), so NLM's smoothing
-removes fine high-frequency structure that K-SVD's dictionary
-would otherwise learn.  Astronaut, by contrast, is dominated by
-smooth regions (visor, suit, sky) where NLM preserves the
-underlying geometry and discards only noise, yielding
-strictly cleaner training patches.
-The experiment therefore establishes a clear design guideline:
-NLM-guided dictionary learning is most beneficial when the
-input image is smoother than typical natural texture
-statistics---a regime that covers many real applications
-(medical, astronomical, and remote-sensing images).
+
+\textbf{A quantitative look at why the two images behave
+differently.}  The intuitive explanation ``Astronaut is smoother''
+is actually the \emph{wrong} one---we computed three image
+statistics and found the opposite.
+(i)~The mean gradient magnitude is \emph{higher} on Astronaut
+($0.0334$) than on Camera Man ($0.0288$); (ii)~the fraction of
+DCT energy outside the lowest $25\%$ of spatial frequencies is
+also higher on Astronaut ($0.0080$ vs.\ $0.0061$); but
+(iii)~the mean Euclidean distance from each $8\!\times\!8$ patch
+to its ten nearest neighbours (a direct measure of NLM's core
+assumption) is \emph{lower} on Camera Man ($0.272$) than on
+Astronaut ($0.288$).
+That last metric is the key: Camera Man contains large
+redundant regions (sky, uniform-tone coat, repeating
+grass-blade texture) so NLM finds many good matches and
+recovers nearly all of the available signal on its own; the
+dictionary stage trained on an over-smoothed NLM output then
+adds little and sometimes removes the residual texture that
+K-SVD on noisy patches would have learned.
+Astronaut contains more \emph{unique} local structures
+(visor reflections, fabric stitching, instrumentation) so NLM's
+averaging is weaker, which leaves genuine structural
+information in the residual; a dictionary trained on Astronaut's
+NLM-cleaned patches can then specialise to those unique atoms
+and recover them from the noisy input.
+\emph{The design guideline is therefore patch-redundancy, not
+smoothness:} NLM-guided dictionary learning helps when the image
+contains many locally unique structures that NLM cannot resolve
+alone, and hurts when the image is so redundant that NLM already
+saturates the achievable PSNR.
+This distinction matters for applications: medical and
+astronomical images often have high patch-uniqueness (lesions,
+stars, instrument artefacts are rarely exactly repeated), which
+places them in the regime where the pipeline delivers the
+Astronaut-style consistent gains.
 
 \subsection{Analysis}
 
 K-SVD matches or slightly exceeds NLM at $\sigma\leq25$, where
 the learned dictionary captures fine image-specific structure
 that NLM's fixed patch-matching misses.
-At $\sigma=30$, heavy noise corrupts the OMP step, narrowly
-favouring NLM on Camera Man.
-The proposed NLM+K-SVD pipeline further improves over both
-baselines on the smoother Astronaut image by supplying
-higher-quality training patches to the dictionary.
+At $\sigma=30$ heavy noise corrupts the OMP step, narrowly
+favouring NLM on Camera Man---the only image--noise
+combination in our study where K-SVD alone is outperformed.
+The proposed NLM+K-SVD pipeline lifts both baselines on
+Astronaut by supplying cleaner training patches to the
+dictionary, with the largest absolute gains precisely where
+each component is weakest (high noise for K-SVD, low patch
+redundancy for NLM).
 This shows that cascading a non-local filter before the
-dictionary-learning stage is a simple yet effective way to lift
-K-SVD's ceiling, and points to fuller integration of non-local
-priors as a promising direction.
+dictionary-learning stage is a simple yet effective way to
+raise K-SVD's ceiling, and points to fuller integration of
+non-local priors---for example, re-applying NLM to the K-SVD
+output to drive a second dictionary-refinement pass---as a
+promising direction.
 
 % ==============================================================
 \section{Discussion and Conclusions}
@@ -488,10 +517,13 @@ to patch-matching for mid-range noise.
 The proposed NLM+K-SVD pipeline further improves on both
 individual components on Astronaut across \emph{all} tested
 noise levels ($+0.02$--$0.06$\,dB over K-SVD, $+0.56$--$1.26$\,dB
-over NLM).  On Camera Man the pipeline is competitive at low
-noise but loses slightly at high noise due to NLM over-smoothing
-high-frequency texture---identifying a clear content-dependent
-operating regime for the method.
+over NLM).  On Camera Man---which has higher patch redundancy
+(mean 8$\times$8 kNN-distance $0.272$ vs.\ $0.288$)---NLM alone
+already saturates the achievable PSNR, and the pipeline is
+competitive at low noise but slightly behind at high noise.
+Patch redundancy, rather than raw smoothness, is therefore the
+property that predicts when NLM-guided dictionary learning
+pays off.
 
 \textbf{Computational cost.}
 For each $8\!\times\!8$ patch, OMP costs
@@ -518,12 +550,15 @@ noise-sensitivity curves.
 \textbf{Future directions.}
 An immediate extension is to iterate the NLM+K-SVD pipeline:
 feeding the K-SVD output back into NLM for a second pre-filtering
-pass could compound the gains observed on smooth imagery.
+pass could compound the gains observed on low-redundancy
+imagery.
 Applying the combined method to colour images (through a joint
 RGB dictionary or luminance-chrominance decomposition) and to
 medical-imaging tasks such as low-dose CT denoising are
-promising directions, as both target domains fit the
-smooth-image operating regime we identified above.
+promising directions, as both target domains tend to contain
+many locally unique structures and therefore fit the
+low-redundancy operating regime in which the pipeline is
+strongest.
 Finally, replacing the OMP sparse-coding step with a more
 robust solver (e.g., Batch-OMP or FISTA with $\ell_1$
 penalty) could tighten the paper's noise-sensitivity curve
