@@ -1,0 +1,26 @@
+{
+  "None": {
+    "ksvd_mean": 45.45,
+    "ksvd_std": 2.22,
+    "mod_mean": 44.05,
+    "mod_std": 1.91
+  },
+  "30": {
+    "ksvd_mean": 44.55,
+    "ksvd_std": 2.22,
+    "mod_mean": 45.3,
+    "mod_std": 1.62
+  },
+  "20": {
+    "ksvd_mean": 44.8,
+    "ksvd_std": 1.91,
+    "mod_mean": 44.45,
+    "mod_std": 2.18
+  },
+  "10": {
+    "ksvd_mean": 45.05,
+    "ksvd_std": 3.04,
+    "mod_mean": 44.75,
+    "mod_std": 2.41
+  }
+}

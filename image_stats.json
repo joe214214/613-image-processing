@@ -1,0 +1,12 @@
+{
+  "CameraMan": {
+    "grad_mag": 0.0288,
+    "hf_ratio": 0.0061,
+    "knn_dist": 0.2721
+  },
+  "Astronaut": {
+    "grad_mag": 0.0334,
+    "hf_ratio": 0.008,
+    "knn_dist": 0.2876
+  }
+}

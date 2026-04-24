@@ -1,0 +1,44 @@
+{
+  "100": {
+    "ksvd_mean": 0.45,
+    "ksvd_std": 0.59,
+    "mod_mean": 0.55,
+    "mod_std": 0.8
+  },
+  "300": {
+    "ksvd_mean": 18.35,
+    "ksvd_std": 8.14,
+    "mod_mean": 26.5,
+    "mod_std": 7.9
+  },
+  "500": {
+    "ksvd_mean": 39.95,
+    "ksvd_std": 3.81,
+    "mod_mean": 40.85,
+    "mod_std": 4.33
+  },
+  "1000": {
+    "ksvd_mean": 44.15,
+    "ksvd_std": 2.67,
+    "mod_mean": 43.45,
+    "mod_std": 2.73
+  },
+  "1500": {
+    "ksvd_mean": 45.45,
+    "ksvd_std": 2.22,
+    "mod_mean": 44.05,
+    "mod_std": 1.91
+  },
+  "2000": {
+    "ksvd_mean": 45.35,
+    "ksvd_std": 1.65,
+    "mod_mean": 44.05,
+    "mod_std": 2.46
+  },
+  "3000": {
+    "ksvd_mean": 45.75,
+    "ksvd_std": 2.09,
+    "mod_mean": 43.95,
+    "mod_std": 2.04
+  }
+}
